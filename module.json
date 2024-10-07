@@ -33,6 +33,6 @@
       "path": "lang/en.json"
     }
 	],
-    "manifest": "https://github.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/releases/latest/download/module.json",
+    "manifest": "https://github.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/blob/master/module.json",
     "download": "https://github.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/releases/latest/download/module.zip"
   }
