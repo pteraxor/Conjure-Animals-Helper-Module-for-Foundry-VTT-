@@ -1,0 +1,38 @@
+{
+    "id": "conjure-animals-helper",
+    "name": "conjure-animals-helper",
+    "title": "Conjure Animal Helper",
+    "description": "This module is to make the conjure animals spell easier on the players and the DM. It draws from a compendium, and allows the player to roll for animals or select them. And then the DM is able to add the appropriate tokens with a button.",
+    "version": "1.1.2",
+    "authors": [
+        {
+            "name": "Pteraxor",
+            "discord": "JPretzel"
+        }
+    ],
+    "minimumCoreVersion": "9",
+    "compatibleCoreVersion": "12",
+    "compatibility": {
+        "minimum": "9",
+        "verified": "12"
+    },
+    "scripts": ["scripts/animal-roller.js"],
+    "packs": [
+        {
+            "name": "conjure-animal-creatures",
+            "label": "Conjure Animals",
+            "path": "./packs/creatures.db",
+            "type": "Actor",
+            "system": "dnd5e"
+        }
+    ],
+	"languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+	],
+    "manifest": "https://github.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/releases/latest/download/module.json",
+    "download": "https://github.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/releases/latest/download/module.zip"
+  }
