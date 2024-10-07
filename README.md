@@ -61,8 +61,14 @@ Everything comes ready to go, but there are options you can change.
 -When selecting another compendium, the GM must chose which subfolders are used
 ![Subfolders](assets/subfolder_select.PNG)
 
+
+
 -and which actors to use
 ![Actor choice](assets/actor_select.PNG)
+
+
+
+
 -by default, all of the animals explicitely mentioned in the "Conjure Animals" spell are loaded
 
 
