@@ -69,3 +69,10 @@ The settings also allow the GM to choose a different compendium to load creature
 The GM can also specify which actors to use. By default, all animals explicitly mentioned in the **Conjure Animals** spell are loaded.
 
 ![Actor Choice](assets/actor_select.PNG)
+
+
+### Troubleshooting
+
+- after loading a new compendium, try refreshing if things are acting strange. It cannot aut reload, because it needs to take the time to populate everything
+- If nothing is loaded, try loading another compendium, and loading back to default one afterwards.
+
