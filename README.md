@@ -13,6 +13,7 @@ This module automates many aspects of the **Conjure Animals** spell, allowing pl
 
 ## Installation
 1. Use the manifest URL to install the module.
+https://raw.githubusercontent.com/pteraxor/Conjure-Animals-Helper-Module-for-Foundry-VTT-/refs/heads/master/module.json
 
 ## Usage
 To use the module, the player can click the **"Conjure Animals"** button in the Actors tab. 
