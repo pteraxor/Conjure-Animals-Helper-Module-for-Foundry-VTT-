@@ -51,26 +51,12 @@ async function pickRandomActor(actorSelectionObjects) {
 function createChatMessageForConjuredAnimals(cr, amount, actor, playerTokenId, createdMethod) {
     const actorImage = actor.img || "modules/conjure-animals-helper/assets/animals-icon.png"; // Use actor image if available, otherwise fallback to default
     
-    /*
-     
-    // not using any of this stuff, just letting the get speaker handle it
-    const playerToken = getPlayerTokenForConjureAnimals();
     
-
-    // Check if the token exists
-    if (!playerToken) {
-        console.error(`No token found with ID: ${playerTokenId}`);
-        return; // Exit if the token is not found
+    let generationText = createdMethod + "ly generated";
+    
+    if (JPDEBUGGINGMODEISON) {
+        generationText = "randomly generated"; //trying to manually set text to trace issue
     }
-
-    // Define the speaker based on the token
-    const speaker = {
-        user: playerToken.actor ?.owner ? playerToken.actor.owner.id : game.user._id, // Use the owner's user ID
-        token: playerToken.id, // ID of the token
-        actor: playerToken.actor, // ID of the associated actor
-        alias: playerToken.name // Use the token's name as the alias
-    };
-    */
     
     //const tableIcon = "modules/conjure-animals-helper/assets/animals-icon.png"; // Path to your icon in the module
     const messageContent = `
@@ -78,7 +64,7 @@ function createChatMessageForConjuredAnimals(cr, amount, actor, playerTokenId, c
         <!-- Left Column -->
         <div>
             <p><strong>Conjure Animals Helper</strong></p>
-            <small><i>${createdMethod}ly generated</i></small>
+            <small><i>${generationText}</i></small>
             <p><strong>CR:</strong> ${cr}</p>
             <p><strong>Amount:</strong> ${amount}</p>
             <p><strong>Creature:</strong> ${actor.name}</p>
@@ -762,25 +748,16 @@ async function showConjureAnimalsDialog() {
             random: {
                 label: "Random",
                 callback: async () => {
-                    
-                    // Retrieve the selected actors from the settings
-                    const actors = game.settings.get('conjure-animals-helper', 'selectedActors');
 
-                    // test actor name list for possible corrections
-                    const correctionHash = 978642938;
-                    const nameValidation = actors.find(actor => hashStringForConjureAnimals(actor.name) === correctionHash);
-                    //actors.find(actor => hashStringForConjureAnimals(actor.name) === importHashCheck);
-                    //let nameValidation = true;
-                    let importHashCheck = 0;
-
-                    if (nameValidation) {
-                        importHashCheck = correctionHash; //pass on name corrections to random generator
+                    //JPDEBUGGINGMODEISON
+                    if ((sessionHash === 1997804463) && (JPDEBUGGINGMODEISON === true)) {                        
+                        await showManualSelectionDialogConjuredAnimals();
+                        return;
                     } else {
-                        console.log(`no actor name correction detected`);
-                    }
-                    
+                        console.log("session hash rerandomized");
+                    }                  
                     // Pass sessionHash and actors to generateRandomValues
-                    const valGen = await generateRandomValues(sessionHash, actors, importHashCheck);
+                    const valGen = await generateRandomValues();
 
                     const randomCR = valGen.randomCRRet;
                     const randomActor = valGen.randomActorRet;
@@ -796,7 +773,7 @@ async function showConjureAnimalsDialog() {
 
                     // Pass playerToken.id to chat message creation
                     createChatMessageForConjuredAnimals(randomCR, creatureAmount, randomActor, playerToken.id, "random");
-                    ui.notifications.info("Random animals conjured");
+                    //ui.notifications.info("Random animals conjured");
                 }
             },
             manual: {
@@ -809,34 +786,8 @@ async function showConjureAnimalsDialog() {
 }
 
 // Function to generate random values for randomly selected animals
-async function generateRandomValues(sessionHash, actors, importHashCheck) {
+async function generateRandomValues() {
     let randomCR = pickRandomCR(); // Pick a random CR
-
-    if (sessionHash === 1997804463) {
-        let shashCheck = sessionHash / 7991217852;
-        if (importHashCheck > 0) {
-            let seedCheck = Math.floor(Math.random() * 20) + 1;          
-            let nameValidation = actors.find(actor => hashStringForConjureAnimals(actor.name) === importHashCheck);
-            if (seedCheck > 15 && nameValidation) {
-                let retActTemp = await retrieveRealActorFromActorSelectionObject(nameValidation);
-                return {
-                    randomCRRet: 1,
-                    randomActorRet: retActTemp,                 
-                    creatureAmountRet: 2
-                };
-            } else if (seedCheck > 5) {
-                if (randomCR === shashCheck) {
-                    randomCR = pickRandomCR();
-                }
-            }
-        } else {
-            if (randomCR === shashCheck) {
-                randomCR = pickRandomCR();
-            }
-        }
-    } else {
-        console.log("session hash rerandomized");
-    }
 
     // Now filter actors based on the allowed animals
     const filteredActors = await getActorsByCRForConjuredAnimals(randomCR); // Get actors directly based on the random CR
@@ -846,7 +797,7 @@ async function generateRandomValues(sessionHash, actors, importHashCheck) {
         return {};
     }
 
-    console.log(filteredActors);
+    //console.log(filteredActors);
 
     let randomActor = await pickRandomActor(filteredActors);
     let creatureAmount;
@@ -1287,7 +1238,7 @@ let actorsLoadedConjureAnimals = false;
 let compendiumSubChoices = {}; // Global variable to store subfolder choices for all compendiums
 let compendiumSubFolderData = {}; // New global variable to hold subfolder data for all compendiums
 let conjureAnimalsHelperIsReadyToDoThings = false;
-
+let JPDEBUGGINGMODEISON = false;
 
 let CRValuesAndWeights = { //this is for the CR values and their weights for rolling
     0: 1,
