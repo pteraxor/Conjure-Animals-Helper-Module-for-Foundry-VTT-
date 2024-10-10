@@ -166,7 +166,7 @@ async function createActorTokensFromChat(cr, amount, actorId, clickedToken) {
             tokensToCreate.push({
                 ...tokenData,
                 actorId: actor.id,
-                name: `Conjured(${ownerName}): ${actor.name}`,
+                name: `Conjured(${ownerName}): ${actor.name} ${(i+1)}`,
                 x,
                 y,
                 flags: {
@@ -411,7 +411,7 @@ async function deleteAllConjuredTokens() {
     });
 
     if (tokensToDelete.length === 0) {
-        ui.notifications.info("No conjured tokens to delete.");
+        //ui.notifications.info("No conjured tokens to delete.");
         return;
     }
 
@@ -507,6 +507,125 @@ async function addConjuredTokensToCombat(clickedToken) {
     ui.notifications.info(`${tokens.length} conjured tokens have been added to combat with an initiative of ${initValue}.`);
 
 }
+
+// Function to delete conjured tokens from the combat tracker
+async function deleteConjuredTokensFromCombat(clickedToken) {
+    if (!game.user.isGM) {
+        ui.notifications.error("Only the GM can remove tokens from combat.");
+        return;
+    }
+
+    const combat = game.combat;
+
+    // Check if there is an active combat encounter
+    if (!combat) {
+        ui.notifications.warn("There is no active combat to remove conjured tokens from.");
+        return;
+    }
+
+    // Get all conjured tokens in the current scene
+    const tokens = canvas.tokens.placeables.filter(token => token.document.flags ?.myModule ?.isConjured);
+
+    // If no conjured tokens are found, notify the user
+    if (tokens.length === 0) {
+        ui.notifications.info("No conjured tokens found in the current scene.");
+        return;
+    }
+
+    const checkForExisting = await checkForConjuredTokensInCombat(clickedToken);
+    if (!checkForExisting) {
+        console.log("No conjured tokens for this player found in combat.");
+        ui.notifications.error("Selected player has no summoned tokens in the combat tracker.");
+        return;
+    }
+
+    // Filter the combatants to get the conjured tokens that are in combat
+    const combatantsToRemove = combat.combatants.filter(combatant => {
+        return tokens.some(token => token.id === combatant.tokenId);
+    });
+
+    // Remove the combatants from the combat tracker
+    const combatantIds = combatantsToRemove.map(c => c.id);
+    await combat.deleteEmbeddedDocuments("Combatant", combatantIds);
+
+    ui.notifications.info(`${combatantsToRemove.length} conjured tokens have been removed from combat.`);
+}
+
+// Function to remove all conjured creatures from the combat tracker based on their name
+async function removeConjuredCombatants() {
+    if (!game.user.isGM) {
+        ui.notifications.error("Only the GM can remove tokens from combat.");
+        return;
+    }
+
+    const combat = game.combat;
+
+    // Check if there is an active combat encounter
+    if (!combat) {
+        ui.notifications.warn("There is no active combat to remove conjured tokens from.");
+        return;
+    }
+    console.log(combat.combatants);
+
+    // Filter the combatants based on the name containing "Conjured("
+    const combatantsToRemove = combat.combatants.filter(combatant => {
+        return combatant ?.name ?.startsWith("Conjured("); // Check if the name starts with "Conjured("
+    });
+
+    console.log(combatantsToRemove);
+
+    //return;
+
+    // If no conjured combatants are found, notify the user
+    if (combatantsToRemove.length === 0) {
+        //ui.notifications.info("No conjured combatants found in the current combat.");
+        return;
+    }
+
+    // Remove the combatants from the combat tracker
+    const combatantIds = combatantsToRemove.map(c => c.id);
+    await combat.deleteEmbeddedDocuments("Combatant", combatantIds);
+
+    ui.notifications.info(`${combatantsToRemove.length} conjured combatants have been removed from combat.`);
+}
+
+
+
+// Function to check if a player has conjured tokens in active combat (as before)
+async function checkForConjuredTokensInCombat(playerToken) {
+    if (!playerToken) {
+        ui.notifications.error("No token found with the provided ID.");
+        return false; // No token found, return false
+    }
+
+    const relevantActor = game.actors.get(playerToken.actor.id);
+    const ownerName = relevantActor ? relevantActor.name : "Unknown Actor";
+
+    const tokenNamePattern = new RegExp(`^Conjured\\(${ownerName}\\): .+`);
+    const activeCombat = game.combat;
+
+    if (!activeCombat) {
+        console.warn("No active combat found.");
+        return false;
+    }
+
+    for (const combatant of activeCombat.combatants) {
+        const tokensExisting = canvas.tokens.placeables.filter(token => {
+            const isConjured = token.document.flags ?.myModule ?.isConjured;
+            const nameMatches = token.name.match(tokenNamePattern);
+            return isConjured && nameMatches && token.actor.id === combatant.actorId;
+        });
+
+        if (tokensExisting.length > 0) {
+            console.log(`Player ${ownerName} has existing conjured tokens in combat.`);
+            return true;
+        }
+    }
+
+    console.log(`Player ${ownerName} does not have existing conjured tokens in combat.`);
+    return false;
+}
+
 
 // Function to check if a player has conjured tokens in active combat
 async function checkForConjuredTokensInCombat(playerToken) {
@@ -2019,6 +2138,7 @@ async function addSummonButtonToActorsTab(html) {
         // Add click handler for the button
         summonButton.click(() => {
             deleteAllConjuredTokens();
+            removeConjuredCombatants();
         });
     } else {
         // Create the button element with a label
@@ -2088,3 +2208,62 @@ async function createAnimalConjureHelperMacro() {
 
 ///////////////////////////////////////////////////////////////////////backup stuff below/////////////////////////////////////////////////////////////////////////
 
+// Listen for any updates to actors
+Hooks.on("updateActor", async (actor, updateData) => {
+    // Check if the HP is being updated
+    const hpData = getProperty(updateData, "system.attributes.hp.value");
+    if (hpData === 0) {
+        // Get the active token for this actor
+        const token = actor.getActiveTokens()[0];
+
+        // Only proceed if the token exists and has the 'isConjured' flag
+        if (token && token.document.flags ?.myModule ?.isConjured) {
+            confirmTokenDeletion(token);
+        }
+    }
+});
+
+// Function to ask GM for confirmation to delete a conjured token and its combatant
+async function confirmTokenDeletion(token) {
+    if (!game.user.isGM) return; // Only show this to the GM
+
+    // Create a dialog to confirm deletion
+    new Dialog({
+        title: "Delete Conjured Token?",
+        content: `<p>The token "${token.name}" has reached 0 HP. Do you want to delete the token and remove it from combat?</p>`,
+        buttons: {
+            yes: {
+                icon: '<i class="fas fa-check"></i>',
+                label: "Yes",
+                callback: async () => {
+                    await deleteTokenAndCombatant(token);
+                }
+            },
+            no: {
+                icon: '<i class="fas fa-times"></i>',
+                label: "No",
+                callback: () => {
+                    console.log(`The token "${token.name}" was not deleted.`);
+                }
+            }
+        },
+        default: "no"
+    }).render(true);
+}
+
+// Function to delete the token and its combatant
+async function deleteTokenAndCombatant(token) {
+    const combat = game.combat;
+
+    // Delete the token from the scene
+    await token.document.delete();
+
+    // Check if the token is in the combat tracker
+    if (combat) {
+        const combatant = combat.combatants.find(c => c.tokenId === token.id);
+        if (combatant) {
+            await combat.deleteEmbeddedDocuments("Combatant", [combatant.id]);
+            ui.notifications.info(`${token.name} has been removed from the combat tracker.`);
+        }
+    }
+}
