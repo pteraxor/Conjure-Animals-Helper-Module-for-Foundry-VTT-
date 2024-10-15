@@ -313,11 +313,20 @@ async function checkForConjuredTokens(playerToken) {
 // Function to get the first owned token of the current user
 async function getPlayerTokenForConjureAnimals() {
     const user = game.user;
+
+    //console.log(user);
+    //console.log(user._source.character);
     const tokens = canvas.tokens.placeables;
+
+    console.log(tokens);
+
+    let targetActorId = user._source.character;
 
     // Filter tokens to find the ones owned by the current user
     const userTokens = tokens.filter(token => {
-        return token.document.actor ?.ownership ?.[user.id] === 3; // 3 indicates full ownership
+        const hasMatchingActorId = token.document.actorId === targetActorId;
+        return hasMatchingActorId;
+        //return token.document.actor ?.ownership ?.[user.id] === 3; // 3 indicates full ownership
     });
 
     if (userTokens.length === 0) {
