@@ -325,8 +325,12 @@ async function getPlayerTokenForConjureAnimals() {
     // Filter tokens to find the ones owned by the current user
     const userTokens = tokens.filter(token => {
         const hasMatchingActorId = token.document.actorId === targetActorId;
-        return hasMatchingActorId;
-        //return token.document.actor ?.ownership ?.[user.id] === 3; // 3 indicates full ownership
+
+        if (hasMatchingActorId) {
+            return hasMatchingActorId;
+        }
+        
+        return token.document.actor ?.ownership ?.[user.id] === 3; // 3 indicates full ownership
     });
 
     if (userTokens.length === 0) {
