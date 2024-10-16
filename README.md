@@ -105,6 +105,11 @@ The screen allows you to view the conjured, and info about them. And dismiss the
 
 ![dm conjure manage](https://i.imgur.com/qrUYmoQ.png)
 
+## Now Compatible with "Dice So Nice"
+
+Here's a litte demo of the new features and how any 3D dice simulator should work with it automatically
+
+![demo vid](https://i.imgur.com/EonwUKw.mp4)
 
 ## Configuration
 Everything is ready to go, but there are options you can change.
