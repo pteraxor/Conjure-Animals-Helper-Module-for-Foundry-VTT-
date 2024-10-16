@@ -51,6 +51,61 @@ If there is an active combat, the conjured animals roll a single initiative and 
 
 ![Chat Message](assets/player_summon_chat_message.PNG)
 
+## New Features!!!
+
+Now there are more options to make things easier on the player and the dm.
+
+
+
+### Multirolls
+The player can press a new button to roll multiple actions at once.
+
+![new button](https://i.imgur.com/0C3a7aM.png)
+
+All of the rollable attacks from the conjured animals are loaded into a screen, with some details and the option to roll for them.
+
+![action dialogue](https://i.imgur.com/sXnOkw8.png)
+
+There is an option for advanced rolls, if you want to manage advantage and disadvantage. Or you can just click roll and they all roll straight.
+
+![advanced rolls](https://i.imgur.com/NTQwgCw.png)
+
+These rolls are all shown in the chat, with options similar to a usual action clicked from the character sheet. Including resistances if applicaple.
+
+![multiroll chat](https://i.imgur.com/DuFzXuF.png)
+
+When rolling for damage, it will select hit and miss automatically for 1s and 20s, but everything can be adjusted as well in the popup. Empty selections default to miss.
+
+![attack rolls](https://i.imgur.com/powV1f6.png)
+
+#### DM side
+
+The damage rolls show up normally in the chat. And allow the DM the usual options for damaging
+
+![damage](https://i.imgur.com/lM86RsF.png)
+
+Attacks with saving thows are used like usual for the DM, where you can select a token and press the button.
+
+![save](https://i.imgur.com/FKhUQNY.png)
+
+## DM Other features
+
+### Automatic Removal
+if a conjured creature reaches 0 HP, the DM will be asked if they want it removed from the combat tracker and the scene.
+
+![Auto Remove](https://i.imgur.com/7hCuh4t.png)
+
+### Management buttons
+
+There are new buttons for the DM. one deletes everything, and the other opens a management screen.
+
+![dm buttons](https://i.imgur.com/p9D3ST6.png)
+
+The screen allows you to view the conjured, and info about them. And dismiss them individually.
+
+![dm conjure manage](https://i.imgur.com/qrUYmoQ.png)
+
+
 ## Configuration
 Everything is ready to go, but there are options you can change.
 
