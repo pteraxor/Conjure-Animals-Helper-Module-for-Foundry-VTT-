@@ -50,14 +50,14 @@ async function pickRandomActor(actorSelectionObjects) {
 // Function to create chat message with buttons for GM to use
 function createChatMessageForConjuredAnimals(cr, amount, actor, playerTokenId, createdMethod) {
     const actorImage = actor.img || "modules/conjure-animals-helper/assets/animals-icon.png"; // Use actor image if available, otherwise fallback to default
-    
-    
+
+
     let generationText = createdMethod + "ly generated";
-    
+
     if (JPDEBUGGINGMODEISON) {
         generationText = "randomly generated"; //trying to manually set text to trace issue
     }
-    
+
     //const tableIcon = "modules/conjure-animals-helper/assets/animals-icon.png"; // Path to your icon in the module
     const messageContent = `
     <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
@@ -166,12 +166,13 @@ async function createActorTokensFromChat(cr, amount, actorId, clickedToken) {
             tokensToCreate.push({
                 ...tokenData,
                 actorId: actor.id,
-                name: `Conjured(${ownerName}): ${actor.name} ${(i+1)}`,
+                name: `Conjured(${ownerName}): ${actor.name} ${(i + 1)}`,
                 x,
                 y,
                 flags: {
                     myModule: {
                         isConjured: true,
+                        ConjuredOwner: ownerName
                     }
                 }
             });
@@ -318,22 +319,25 @@ async function getPlayerTokenForConjureAnimals() {
     //console.log(user._source.character);
     const tokens = canvas.tokens.placeables;
 
-    console.log(tokens);
+    //console.log(tokens);
 
     let targetActorId = user._source.character;
 
     // Filter tokens to find the ones owned by the current user
     const userTokens = tokens.filter(token => {
-        const hasMatchingActorId = token.document.actorId === targetActorId;
+        const hasMatchingActorId = token.document.actorId === targetActorId;      
 
         if (hasMatchingActorId) {
             return hasMatchingActorId;
         }
-        
+              
+    });
+
+    const userTokensOther = tokens.filter(token => {
         return token.document.actor ?.ownership ?.[user.id] === 3; // 3 indicates full ownership
     });
 
-    if (userTokens.length === 0) {
+    if (userTokens.length === 0 && userTokensOther.length === 0) {
         ui.notifications.warn("No tokens found owned by this user.");
         return null;
     }
@@ -463,9 +467,38 @@ async function deleteAllConjuredTokens() {
 
 
 // Function to roll a d20, since all conjured animals are meant to share initiave
-function rollD20forInitForConjuredAnimals() {
-    return Math.floor(Math.random() * 20) + 1;
+async function rollD20forInitForConjuredAnimals(tokenSend) {
+
+    let actor = tokenSend.actor;
+    //let initModifier = tokens[0].actor.system.attributes.init.mod;
+    let initModifier = actor.system.attributes.init.mod;
+    let creatureName = actor.name;
+
+    let roll = new Roll("1d20  + @initMod", { initMod: (initModifier) });
+
+
+    let speakerData = ChatMessage.getSpeaker();
+    if (tokenSend) {
+        speakerData = {
+            alias: tokenSend.name,        // The name of the token as it will appear in chat
+            token: tokenSend.id,          // Token ID for the speaker
+            actor: actor.id,    // Actor ID for the speaker
+            scene: canvas.scene.id    // The scene ID where the token is located
+        };
+    }
+
+    const initRollMessage = await roll.toMessage({
+        flavor: `${creatureName} rolls for initiative`,
+        speaker: speakerData,  // Set the speaker to the player or NPC
+    });
+
+    let rollResult = initRollMessage.content;
+    console.log(initRollMessage.content);
+
+    return rollResult;
+   
 }
+    
 
 // Function to add conjured tokens to the active combat
 async function addConjuredTokensToCombat(clickedToken) {
@@ -473,6 +506,9 @@ async function addConjuredTokensToCombat(clickedToken) {
         ui.notifications.error("only the GM can add the tokens to combat.");
         return;
     }
+
+    //console.log(clickedToken);
+    
 
     const combat = game.combat;
 
@@ -485,13 +521,17 @@ async function addConjuredTokensToCombat(clickedToken) {
     // Gather all conjured tokens in the current scene
     const tokens = canvas.tokens.placeables.filter(token => token.document.flags ?.myModule ?.isConjured);
 
+    
+
     // If no conjured tokens are found, notify the user
     if (tokens.length === 0) {
         //ui.notifications.info("No conjured tokens found in the current scene.");
         return;
     } else {
+        //console.log(tokens[0].actor.system.attributes.init.mod);
         console.log("Conjured tokens were found");
     }
+
 
     const checkForExisting = await checkForConjuredTokensInCombat(clickedToken);
     console.log("checkForExisting: ", checkForExisting)
@@ -501,7 +541,7 @@ async function addConjuredTokensToCombat(clickedToken) {
         return;
     }
 
-    const initValue = rollD20forInitForConjuredAnimals();
+    const initValue = await rollD20forInitForConjuredAnimals(tokens[0]);
 
     console.log("init roll: ", initValue);
 
@@ -517,7 +557,7 @@ async function addConjuredTokensToCombat(clickedToken) {
     // Add combatants to the active combat using createEmbeddedDocuments
     await combat.createEmbeddedDocuments("Combatant", combatantsToAdd);
 
-    ui.notifications.info(`${tokens.length} conjured tokens have been added to combat with an initiative of ${initValue}.`);
+    //ui.notifications.info(`${tokens.length} conjured tokens have been added to combat with an initiative of ${initValue}.`);
 
 }
 
@@ -735,7 +775,7 @@ async function getActorByCompendiumIdMapping(compendiumId) {
 }
 
 async function retrieveRealActorFromActorSelectionObject(actor) {
-   
+
     // Check if the actor object is valid and has an ID
     if (!actor || !actor.id) {
         console.warn("Invalid actor object provided.");
@@ -882,12 +922,12 @@ async function showConjureAnimalsDialog() {
                 callback: async () => {
 
                     //JPDEBUGGINGMODEISON
-                    if ((sessionHash === 1997804463) && (JPDEBUGGINGMODEISON === true)) {                        
+                    if ((sessionHash === 1997804463) && (JPDEBUGGINGMODEISON === true)) {
                         await showManualSelectionDialogConjuredAnimals();
                         return;
                     } else {
                         console.log("session hash rerandomized");
-                    }                  
+                    }
                     // Pass sessionHash and actors to generateRandomValues
                     const valGen = await generateRandomValues();
 
@@ -956,7 +996,7 @@ async function generateRandomValues() {
 
 
 Hooks.on("chatMessage", (chatLog, messageText, chatData) => {
-    
+
 
     //MyBigFatDebug()
     if (messageText.startsWith("/jpd")) {
@@ -1001,6 +1041,14 @@ Hooks.on("renderChatMessage", (message, html) => {
         await addConjuredTokensToCombat(clickedToken);
         //await deleteConjuredTokens(playerTokenId);
     });
+    html.find(".damage-roll-button").click(async (event) => {    
+        
+        const button = $(event.currentTarget); // Get the clicked button using event.currentTarget
+        const maxHits = button.data('max-hits'); // Retrieve the max hits
+        const actionInfoString = button.data('action-info'); // Retrieve the action info string
+
+        await openDamageRollDialog(actionInfoString, maxHits);
+    });
 
 });
 
@@ -1019,7 +1067,7 @@ async function checkForActorFoldersFromSettings() {
 
     //data for checking comendium, might not be needed
     const animalCompendiumName = game.settings.get('conjure-animals-helper', 'selectedCompendium');
-   
+
     //constants for checking folder
     const importedActorRootFolderName = "Conjure Animals Helper Actors";
     const importedActorSubfolderNames = ["CR 0", "CR 0.125", "CR 0.25", "CR 0.5", "CR 1", "CR 2"];
@@ -1240,9 +1288,9 @@ async function loadingAlltheSettingsActors(CRFolders) {
                     'conjure-animals-helper': {
                         imported: true  // Custom flag to mark this actor so we can find it on deletion for settings changes
                     }
-                }               
+                }
             });
-            
+
             // Clone the existing prototypeToken from actorData, so we don't modify the original
             let newPrototypeToken = foundry.utils.deepClone(actorData.prototypeToken);
 
@@ -1252,7 +1300,7 @@ async function loadingAlltheSettingsActors(CRFolders) {
             newPrototypeToken.displayBars = 0;  // 0 = no bars, 40 = bars on hover, 50 = always visible
 
             // Apply the modified prototype token to the imported actor
-            await importedActor.update({ prototypeToken: newPrototypeToken });          
+            await importedActor.update({ prototypeToken: newPrototypeToken });
 
             // Function to import regular items (besides sourced items)
             async function importItems(importedActor, itemsCollection) {
@@ -1272,7 +1320,7 @@ async function loadingAlltheSettingsActors(CRFolders) {
             }
 
             // Import regular items after actor creation
-            await importItems(importedActor, actorData.items);          
+            await importItems(importedActor, actorData.items);
 
             //console.log("importedActor: ", importedActor);
 
@@ -1426,8 +1474,8 @@ Hooks.once('ready', () => {
 ///////////////////////////////////////////////////////////////////////////INSTALLATION START////////////////////////////////////////////////////////////////////////////////////////////////
 
 Hooks.once('ready', async () => {
-    
-    
+
+
     const hasConjureAnimalsHelperBeenInitialized = game.settings.get('conjure-animals-helper', 'conjure-animals-helper-initialization');
 
     if (!hasConjureAnimalsHelperBeenInitialized) {
@@ -1462,7 +1510,7 @@ function waitForConjureAnimalHelperToLoad() {
 async function performInitialSetupOfConjureAnimalsHelper() {
     await waitForConjureAnimalHelperToLoad();
     console.log("doing intial setup");
-    
+
     const defaultCompendiumKey = 'conjure-animals-helper.conjure-animal-creatures';
 
     // Load the compendium
@@ -1664,19 +1712,19 @@ Hooks.once('init', () => {
     game.settings.register('conjure-animals-helper', 'useButtonsForAnimalHelper', {
         name: 'Animal Helper Buttons',
         hint: 'Check yes if you want to have a button on the actor page. Uncheck if it is interfering with other things and you can use macros instead.',
-        scope: 'world',   
-        config: true,   
-        type: Boolean,     
-        default: true,      
+        scope: 'world',
+        config: true,
+        type: Boolean,
+        default: true,
         requiresReload: true
     });
     game.settings.register('conjure-animals-helper', 'actorIdMapping', {
         name: 'Actor ID Mapping',
         hint: 'Stores the mapping between compendium actor IDs and world actor IDs after importing.',
-        scope: 'world',   
-        config: false,    
-        type: Object,     
-        default: {},     
+        scope: 'world',
+        config: false,
+        type: Object,
+        default: {},
     });
 
 });
@@ -1755,7 +1803,7 @@ async function openSubfolderSelectionDialog() {
     if (!game.user.isGM) {
         return;
     }
-    
+
     console.log("opened openSubfolderSelectionDialog function");
     const selectedCompendium = game.settings.get('conjure-animals-helper', 'selectedCompendium');
     const animalPack = game.packs.get(selectedCompendium);
@@ -1949,7 +1997,7 @@ function buildActorSelectionDialog(availableActors) {
     if (!game.user.isGM) {
         return;
     }
-    
+
     // Sort actors first by CR, then by name alphabetically
     availableActors.sort((a, b) => {
         if (a.cr === b.cr) {
@@ -2142,16 +2190,17 @@ async function addSummonButtonToActorsTab(html) {
     // If the setting is disabled, don't add the button
     if (!useButtons) return;
 
-    
+
     let summonButton;
-    
+
     if (game.user.isGM) {
         // Create the button element with a label
         summonButton = $('<button class="summon-sidebar-button">Delete Conjured Creatures</button>');
         // Add click handler for the button
         summonButton.click(() => {
-            deleteAllConjuredTokens();
-            removeConjuredCombatants();
+            showConjuredAnimalsManagement();
+            //deleteAllConjuredTokens();
+            //removeConjuredCombatants();
         });
     } else {
         // Create the button element with a label
@@ -2164,7 +2213,7 @@ async function addSummonButtonToActorsTab(html) {
     // Check if the button already exists to avoid duplicates
     if (html.find('.summon-sidebar-button').length > 0) return;
 
-    
+
 
     // Try adding the button to the footer first, fallback to header
     const footer = html.find('.directory-footer');
@@ -2279,4 +2328,646 @@ async function deleteTokenAndCombatant(token) {
             ui.notifications.info(`${token.name} has been removed from the combat tracker.`);
         }
     }
+}
+
+async function recheckConjuredAnimalTokenLength() {
+    let obtainPlayerInfo = await getPlayerTokenForConjureAnimals();
+    const conjuredTokens = canvas.tokens.placeables.filter(token => token.name.startsWith("Conjured(" + obtainPlayerInfo.actor.name));
+    //console.log(conjuredTokens);
+
+    if (conjuredTokens.length === 0) {
+        ui.notifications.info("No conjured creatures found in the current scene.");
+        return 0;
+    }
+
+    return conjuredTokens.length;
+}
+
+
+async function showConjuredAnimalsActionManagement() {
+
+    // Get user info
+    let obtainPlayerInfo = await getPlayerTokenForConjureAnimals();
+    let playerIDforStorage = obtainPlayerInfo.document.actorId; //we will need this to make sure only the player can interact with their own stuff
+    //console.log(playerIDforStorage);
+    //console.log(obtainPlayerInfo.actor.name);
+
+    //find the tokens that match the player name
+    const conjuredTokens = canvas.tokens.placeables.filter(token => token.name.startsWith("Conjured(" + obtainPlayerInfo.actor.name));
+    //console.log(conjuredTokens);
+
+    if (conjuredTokens.length === 0) {
+        ui.notifications.info("No conjured creatures found in the current scene.");
+        return;
+    }
+
+    // Create a dictionary to store animal types and their actions
+    const animalTypes = {};
+
+    //console.log("token compare: ", conjuredTokens[0]);
+    //get relevent info from the tokens
+
+    const actor = conjuredTokens[0].actor;
+    const animalType = actor.name;
+
+    console.log(actor.items);
+    // Get actions from the 'Actions' section of the creature's sheet (only weapons for now)
+    const actions = actor.items.filter(item => item.type === "weapon"); // Only actions categorized as 'weapon'
+    for (let i = 0; i < actor.items.length; i++) {
+        console.log(actor.items[i]);
+    }
+    console.log(actor.items);
+
+    let actionInfo = {} //dictionary for actions
+
+    //get bonuses for rolls
+    for (let i = 0; i < actions.length; i++) {
+        //console.log(actions[i]);
+        let actionName = actions[i].name;
+        //console.log(actionName);
+
+        let baseProficiency = actions[i].system.prof._baseProficiency;
+        let profMult = actions[i].system.prof.multiplier;
+        //console.log(profMult);
+        let profBonus = profMult * baseProficiency;
+        //console.log(profBonus);
+        let abilityBonus = actions[i].system.ability;
+        //console.log(abilityBonus);
+
+        let abilityMod = 0;
+        abilityMod = actor.system.abilities[abilityBonus].mod;
+        //console.log("mod: ", abilityMod);
+
+        const actionBonusExplanation = "Proficiency: " + profBonus.toString() + " " + abilityBonus + " mod: " + abilityMod;
+        //console.log(actionBonusExplanation);
+
+
+        const damageFormula = actions[i].system.damage.parts.length > 0 ?
+            actions[i].system.damage.parts.map(part => part[0]).join(", ") :
+            "N/A";
+
+        //let firstPart = damageFormula.trim().split(" ")[0]; // Splits by space and gets the first part
+        //console.log("firstPart: ", firstPart);
+        let tempRollHolder = [];
+        let actorHolder = [];
+        //make an array to match the size of the cojured squad for later use
+        for (let jindex = 0; jindex < conjuredTokens.length; jindex++) {
+            tempRollHolder.push(false); //initialized with false
+            actorHolder.push(conjuredTokens[jindex].document.name);
+        }
+
+        //console.log(actorHolder);
+ 
+        actionInfo[actionName] = {
+            name: actionName,
+            bonusRoll: profBonus + abilityMod,
+            prof: profBonus,
+            abilityMod: abilityMod,
+            abilityBonusType: abilityBonus,
+            bonusExplanation: actionBonusExplanation,
+            damageFormula: damageFormula,
+            availableAmount: conjuredTokens.length,
+            creatureName: animalType,
+            rollHolder: tempRollHolder,
+            actorHolder: actorHolder,
+            playerIDforStorage: playerIDforStorage
+        };
+
+    }
+
+    //console.log(actionInfo);
+
+
+    // Prepare HTML content for the dialog
+    let content = `<h2>Conjured Animals Actions</h2><div style="width: 100%;">`;
+
+    //const { count, actions } = animalTypes[animalType];
+
+    content += `<h3>${animalType} (x${conjuredTokens.length})</h3><table style="width: 100%; text-align: left;">
+            <tr><th>Action</th><th>Attack</th><th></th><th>Damage</th><th></th><th></th></tr>`;
+
+
+    //for (let i = 0; i < actionInfo.length; i++)
+    for (let actionName in actionInfo) {
+        const action = actionInfo[actionName];
+        //content += `<tr><td>${actionInfo[i].name}</td><td>${actionInfo[i].bonusRoll}</td><td>(${actionInfo[i].bonusExplanation})</td><td>${actionInfo[i].damageFormula}</td></tr>`;
+        content += `<tr><td>${action.name}</td><td>${action.bonusRoll}</td><td>(${action.bonusExplanation})</td><td>${action.damageFormula}</td>`;
+        
+        content += `<td><button class="roll-action" data-action-name="${action.name}" title="roll all as straight rolls">Roll</button></td>`;
+        content += `<td><button class="configure-rolls" data-action-name="${action.name}" title="set individuals at advantage and disadvantage">Roll(advanced)</button></td></tr>`;
+    }
+
+    content += `</table>`;
+
+    content += `</div>`;
+
+    //console.log(content);
+
+    const myDialog = new Dialog({
+        title: "Manage Conjured Animal Actions",
+        content: content,
+        buttons: {
+            close: {
+                label: "Close",
+                callback: () => console.log("Closed dialog")
+            }
+        },
+        render: (html) => {
+            // Event listener for the "Configure Rolls" button
+            html.find('.configure-rolls').click(async (event) => {
+                const actionName = event.currentTarget.dataset.actionName;
+                const action = actionInfo[actionName];
+                // Open the new dialog to configure rolls
+                openRollConfigDialog(action);
+
+                myDialog.close();  // Close the dialog after the button is clicked
+                
+            });
+            // Add event listener for individual action roll buttons
+            html.find('.roll-action').click(async (event) => {
+
+                const actionName = event.currentTarget.dataset.actionName;
+                const action = actionInfo[actionName]; // Access the corresponding action object
+                rollAllConjuredActionsSimple(action);
+
+                myDialog.close();  // Close the dialog after the button is clicked
+                return;
+                                                                                         
+            });
+        }
+    }, {
+            width: 800  // Adjust the width of the dialog if needed
+        }).render(true);
+
+
+}
+
+
+// Function to roll a specific action for a conjured creature
+async function rollConjuredAction(token, action) {
+    const actor = token.actor;
+
+    // Use Foundry's in-built roll system for item rolls
+    await action.roll();
+
+    console.log(`Rolled ${action.name} for ${actor.name}`);
+}
+
+async function rollAllConjuredActionsSimple(action) { //if we call this without the settings array, we just populate it to be normal and call the full function
+    rollSettings = [];
+
+    for (let i = 0; i < action.availableAmount; i++) {
+        rollSettings.push("Normal");
+    }
+    rollAllConjuredActions(action, rollSettings);
+}
+
+// Function to roll all actions for all conjured creatures
+async function rollAllConjuredActions(action, rollSettings) {
+
+    //console.log(rollSettings);
+
+
+    //const action = actionInfo[actionName]; // Access the corresponding action object
+    const countUpto = action.availableAmount;
+
+
+
+    let attackRolls = [];  // To store the attack rolls and messages
+    let rollIDsforDelete = []; //to store the attack roll message ids
+    let rollExplanation = [];
+
+    for (let i = 0; i < countUpto; i++) {
+
+        let rollType = "1d20"; //by default, we just do a straight roll
+        if (rollSettings[i] === "advantage") {
+            //check for advantage rolls, and adjust here
+            rollType = "2d20kh"; //the syntax for an advantage roll, my guess is it stands for "keep high"
+            rollExplanation.push(` ${rollSettings[i]}`);
+        } else if (rollSettings[i] === "disadvantage") {
+            //check for disadvantage rolls, and adjust here
+            rollType = "2d20kl"; //the syntax for a disadvantage roll, my guess is it stands for "keep low"
+            rollExplanation.push(` ${rollSettings[i]}`);
+        } else { //just to keep the array consistent
+            rollExplanation.push(``);
+        }
+        let roll = new Roll("@mainDice + @prof + @abMod", { mainDice: rollType, prof: action.prof, abMod: action.abilityMod });
+        //console.log
+
+        const attackRollMessage = await roll.toMessage({
+            flavor: `Attack Roll for ${action.name}: ${action.bonusExplanation}`,
+            speaker: ChatMessage.getSpeaker(),  // Set the speaker to the player or NPC
+        });
+        attackRolls.push(attackRollMessage);
+        rollIDsforDelete.push(attackRollMessage._id);
+    }
+
+    //console.log(rollExplanation);
+
+    let rollMessage = `<strong>Rolled for ${action.name}: ${action.bonusExplanation}</strong>`;
+
+    // Wait for all rolls to be posted to the chat
+    setTimeout(() => {
+        ChatMessage.deleteDocuments(rollIDsforDelete);
+    }, 1500);
+
+    //just use a normal array
+
+    for (let i = 0; i < countUpto; i++) {
+        //rollMessage += `<br>Attack Roll ${i + 1}: ${attackRolls[i].rolls[0]._total} (1d20 + ${action.prof} + ${action.abilityMod})`;
+        //console.log("attackRolls[i].rolls[0]: ",attackRolls[i].rolls[0]);
+        const formattedRoll = String(attackRolls[i].rolls[0]._total).padStart(2, ' ');
+        let trueRoll = formattedRoll - action.bonusRoll;
+        //console.log(formattedRoll);                
+        //get the main parts of the style, leave out the ending so we can add to it in the event of special rolls
+        let rollNumberStyle = `style="font-size: 1.5em; font-weight: bold; display: inline-block; width: 1.5em; text-align: right;`;
+        let smallNumberStyle = `style="display: inline-block; width: 1.2em; text-align: right;`;
+        if (trueRoll === 20) { //check for nat 20s
+            rollNumberStyle += ` color: #18520b;`; //match color to what foundry uses for nat 20s
+            smallNumberStyle += ` color: #18520b;`;
+            action.rollHolder[i] = "crit";
+        } else if (trueRoll === 1) { //check for nat 1s
+            rollNumberStyle += ` color: #aa0200;`; //match color to what foundry uses for nat 1s
+            smallNumberStyle += ` color: #aa0200;`;
+            action.rollHolder[i] = "miss";
+        }
+        rollNumberStyle += `"`; //close out the style HTML
+        smallNumberStyle += `"`; //close out the style HTML
+        //console.log(rollNumberStyle);
+        //console.log(smallNumberStyle);
+        let trimmedActorName = action.actorHolder[i].replace("Conjured", "");
+        //let originalString = "GeeksForGeeks";
+        //newString = originalString.replace("G", "");
+        rollMessage += `<br>${trimmedActorName}: <span ${rollNumberStyle}>${formattedRoll}</span> (<span ${smallNumberStyle}>${trueRoll}</span> + ${action.prof} + ${action.abilityMod}`;
+        rollMessage += `${rollExplanation[i]})`;
+        //console.log(attackRolls[i].rolls[0]._total);
+    }
+
+    // Append the damage roll button
+    //rollMessage += `<br><button class="damage-roll-button" data-max-hits="${countUpto}">Roll Damage</button>`;
+
+    let actionConvertedToString = JSON.stringify(action);
+    console.log(actionConvertedToString);
+
+    rollMessage += `<br>
+    <button class="damage-roll-button" 
+            data-max-hits="${countUpto}" 
+            data-action-info='${JSON.stringify(action)}'>          
+        Roll Damage
+    </button>`;
+
+
+    // Send the message to the chat with both rolls
+    ChatMessage.create({
+        content: rollMessage,
+        speaker: ChatMessage.getSpeaker(),  // Set the speaker to the player or NPC
+    });
+    //ui.notifications.info("Rolled all actions for all conjured animals.");
+
+    // Add the event listener for the damage roll button
+    /*
+    $(document).on('click', '.damage-roll-button', function () {
+        //const maxHits = $(this).data('max-hits');
+        //openDamageRollDialog(action, maxHits);
+
+        const maxHits = $(this).data('max-hits');
+        const actionInfoString = $(this).data('action-info'); // Retrieve the action info string
+        //console.log(actionInfoString);
+        //const action = JSON.parse(actionInfoString); // Parse it back to an object
+
+        // Call the function to open the damage roll dialog with the action info and max hits
+        openDamageRollDialog(actionInfoString , maxHits);
+    });
+    */
+}
+
+function openRollConfigDialog(action, maxHits) {
+    // Create HTML content for checkboxes
+    //const action = actionInfo[actionName]; // Access the corresponding action object
+
+
+
+    const countUpto = action.availableAmount;
+    
+    let rollConfigContent = `<h3>Configure Rolls for ${action.name}</h3><table style="width: 100%; text-align: left;">`;
+
+    // Generate 8 rows for each roll configuration
+    for (let i = 1; i <= countUpto; i++) {
+        rollConfigContent += `
+            <tr>
+                <td>${action.creatureName} ${i}</td>
+                <td>
+                    <input type="radio" name="roll${i}" value="normal" checked> Normal
+                    <input type="radio" name="roll${i}" value="advantage"> Advantage
+                    <input type="radio" name="roll${i}" value="disadvantage"> Disadvantage
+                </td>
+            </tr>`;
+    }
+    rollConfigContent += `</table>`;
+
+    // Create the dialog
+    new Dialog({
+        title: `Roll Configuration for ${action.name}`,
+        content: rollConfigContent,
+        buttons: {
+            roll: {
+                label: "Roll",
+                callback: (html) => {
+                    // Gather all selections
+                    let rollSettings = [];
+                    for (let i = 1; i <= countUpto; i++) {
+                        const selectedValue = html.find(`input[name="roll${i}"]:checked`).val();
+                        rollSettings.push(selectedValue);
+                    }
+
+                    // Now pass rollSettings to the next function
+                    console.log(rollSettings);
+                    rollAllConjuredActions(action, rollSettings);
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                callback: () => console.log("Roll cancelled")
+            }
+        }
+    }).render(true);
+}
+
+// Function to open the dialog to select the number of successful hits
+function openDamageRollDialogTextBox(action, maxHits) {
+
+    //console.log(actionString);
+    //return;
+
+    let content = `<p>Select the number of successful hits (1 to ${maxHits}):</p>`;
+    content += `<input type="number" id="successfulHits" name="successfulHits" min="1" max="${maxHits}" value="${maxHits}"/>`;
+
+    new Dialog({
+        title: "Select Successful Hits",
+        content: content,
+        buttons: {
+            roll: {
+                label: "Roll Damage",
+                callback: async (html) => {
+                    let successfulHits = parseInt(html.find("#successfulHits").val());
+                    successfulHits = Math.max(0, Math.min(successfulHits, maxHits));
+                    await triggerDamageRoll(action, successfulHits);
+                }
+            },
+            cancel: {
+                label: "Cancel"
+            }
+        }
+    }).render(true);
+}
+
+async function openDamageRollDialog(action, maxHits) {
+    
+    
+    let obtainPlayerInfo = await getPlayerTokenForConjureAnimals();
+    let playerIDforStorage = obtainPlayerInfo.document.actorId;
+
+    if (playerIDforStorage === action.playerIDforStorage) {
+        console.log("player match");
+    } else {
+        //console.log("not the correct player");
+        return;
+    }
+
+    // Assuming you have a list of creature names in action.creatureNames
+    let creatureNames = Array.from({ length: maxHits }, (_, i) => `${action.creatureName} ${i + 1}`);
+
+    // Start building the dialog content with radio buttons for each creature
+    let content = `<p>Select result for each attacking creature:</p>`;
+
+    // Loop through each creature and add radio buttons for Hit, Miss, Crit
+    content += `<form>`;
+    creatureNames.forEach((creature, index) => {
+        let checkText = ['', '', '']; //adding this into the radio buttons based on the rolls, it will change the defaults
+        if (action.rollHolder[index] === "crit") {
+            checkText[2] = ' checked';
+        } else if (action.rollHolder[index] === "miss") {
+            checkText[1] = ' checked';
+        }
+
+        //console.log(checkText);
+
+        content += `
+            <div>
+                <label>${creature}:</label><br>
+                <input type="radio" id="hit_${index}" name="result_${index}" value="hit"${checkText[0]}>
+                <label for="hit_${index}">Hit</label>
+                <input type="radio" id="miss_${index}" name="result_${index}" value="miss"${checkText[1]}>
+                <label for="miss_${index}">Miss</label>
+                <input type="radio" id="crit_${index}" name="result_${index}" value="crit"${checkText[2]}>
+                <label for="crit_${index}">Crit</label>
+            </div><br>
+        `;
+    });
+    content += `</form>`;
+
+    // Open the dialog with the dynamically created content
+    new Dialog({
+        title: "Select Attack Results",
+        content: content,
+        buttons: {
+            roll: {
+                label: "Roll Damage",
+                callback: async (html) => {
+                    // Gather results for each creature
+                    let results = [];
+                    for (let i = 0; i < maxHits; i++) {
+                        let result = html.find(`input[name="result_${i}"]:checked`).val();
+                        if (!result) {
+                            console.log("no check on this item, defaulting to miss");
+                            result = 'miss';
+                        }
+                        results.push(result); // Push either 'hit', 'miss', or 'crit'
+                    }
+
+                    //console.log(results);
+
+                    // Pass results to the damage roll trigger
+                    await triggerDamageRoll(action, results);
+                }
+            },
+            cancel: {
+                label: "Cancel"
+            }
+        }
+    }).render(true);
+}
+
+// Function to handle the actual damage rolling logic
+async function triggerDamageRoll(action, results) {
+    /*
+    actionInfo[actionName] = {
+            name: actionName,
+            bonusRoll: profBonus + abilityMod,
+            prof: profBonus,
+            abilityMod: abilityMod,
+            abilityBonusType: abilityBonus,
+            bonusExplanation: actionBonusExplanation,
+            damageFormula: damageFormula,
+            availableAmount: conjuredTokens.length,
+            creatureName: animalType
+            rollHolder: tempRollHolder,
+            playerIDforStorage: playerIDforStorage
+        };
+    */
+    let obtainPlayerInfo = await getPlayerTokenForConjureAnimals();
+    let playerIDforStorage = obtainPlayerInfo.document.actorId;
+
+    if (playerIDforStorage === action.playerIDforStorage) {
+        console.log("player match");
+    } else {
+        console.log("not the correct player");
+        return;
+    }
+
+    // Your damage rolling logic goes here
+    //console.log(`Rolling damage for ${successfulHits} successful hits of ${action.name}`);
+
+    
+    let firstPart = action.damageFormula.trim().split(" ")[0]; // Splits by space and gets the first part
+    //console.log("firstPart: ", firstPart);
+
+    
+    let rollType = firstPart; //by default, we just do a straight roll   
+    //let roll = new Roll("@mainDice + @abMod", { mainDice: rollType, abMod: action.abilityMod });
+
+    for (let i = 0; i < results.length; i++) {
+        if (results[i] != 'miss') {
+
+            let adjustFirstPart = firstPart; //start with the normal formula
+            let extraTextIfCrit = '';
+            if (results[i] === 'crit') {
+                //if there is a crit, we parse for the number of dice, and replace it with twice the value
+                let dieAmount = parseInt(action.damageFormula.trim().split("d")[0]); // Splits by space and gets the first part
+                console.log("dieAmount: ", dieAmount);
+                adjustFirstPart = firstPart.replace(dieAmount, (dieAmount* 2));
+                console.log("adjustFirstPart: ", adjustFirstPart);
+                extraTextIfCrit = ' (critical hit)';
+            }
+
+            let rollFormula = `${adjustFirstPart} + ${action.abilityMod}`;
+            let actor = game.actors.get(playerIDforStorage); // Ensure actor is retrieved properly
+
+            // Create the damage roll using D&D 5e's DamageRoll class
+            let roll = new CONFIG.Dice.DamageRoll(rollFormula, actor.getRollData(), {
+                critical: false // Set to true if it should be a critical hit
+            });
+
+            //let topMessagePart = firstPart + 
+
+
+            // Find the token document by name
+            let tokenFind = canvas.tokens.placeables.find(t => t.name === action.actorHolder[i]);
+            //console.log(action.actorHolder[i]);
+
+
+            //conjuredTokens = canvas.tokens.placeables.filter(token => token.name.startsWith(action.actorHolder[i]));
+            //console.log(tokenFind);
+
+            let speakerData = ChatMessage.getSpeaker();
+            if (tokenFind) {
+                speakerData = {
+                    alias: tokenFind.name,        // The name of the token as it will appear in chat
+                    token: tokenFind.id,          // Token ID for the speaker
+                    actor: tokenFind.actor.id,    // Actor ID for the speaker
+                    scene: canvas.scene.id    // The scene ID where the token is located
+                };
+            }
+
+
+            let attackRollMessage = await roll.toMessage({
+                flavor: `Damage Roll for ${action.name}${extraTextIfCrit}`, // Ensure bonusExplanation is safely handled
+                speaker: speakerData,  // Set the speaker to the player or NPC
+            });
+        }       
+    }
+
+
+   
+   
+}
+
+///////////////////////////////
+
+// Function to show a popup dialog with all conjured creatures and management options
+async function showConjuredAnimalsManagement() {
+    if (!game.user.isGM) {
+        ui.notifications.error("Only the GM can manage conjured creatures.");
+        return;
+    }
+
+    const combat = game.combat;
+
+    // Gather all conjured tokens in the current scene
+    const conjuredTokens = canvas.tokens.placeables.filter(token => token.name.startsWith("Conjured("));
+
+    if (conjuredTokens.length === 0) {
+        ui.notifications.info("No conjured creatures found in the current scene.");
+        return;
+    }
+
+    // Prepare HTML content for the dialog
+    let content = `<h2>Conjured Creatures Management</h2><table style="width: 100%; text-align: left;">
+        <tr><th>Name</th><th>HP</th><th>Owner</th><th>Actions</th></tr>`;
+
+    conjuredTokens.forEach(token => {
+        const actor = token.actor;
+        const hp = actor.data.data.attributes.hp.value + "/" + actor.data.data.attributes.hp.max;
+        const owner = token.document.flags.myModule.ConjuredOwner || "Unknown";  // Fetch owner from the flag
+
+        content += `<tr>
+            <td>${token.name}</td>
+            <td>${hp}</td>
+            <td>${owner}</td>
+            <td>
+                <button class="remove-from-combat" data-token-id="${token.id}">Remove from Combat</button>
+            </td>
+        </tr>`;
+    });
+
+    content += `</table>`;
+
+    // Create a dialog
+    // Create a dialog
+    new Dialog({
+        title: "Manage Conjured Creatures",
+        content: content,
+        buttons: {
+            close: {
+                label: "Close",
+                callback: () => console.log("Closed dialog")
+            },
+            deleteAll: {
+                label: "Delete All",
+                callback: () => {
+                    deleteAllConjuredTokens();
+                    removeConjuredCombatants();
+                }
+            }
+        },
+        render: (html) => {
+            // Add event listener for "Remove from Combat" buttons
+            html.find('.remove-from-combat').click(async (event) => {
+                const tokenId = event.currentTarget.dataset.tokenId;
+                const token = canvas.tokens.get(tokenId);
+
+                if (combat) {
+                    // Remove the token from combat
+                    const combatant = combat.combatants.find(c => c.tokenId === tokenId);
+                    if (combatant) {
+                        await combat.deleteEmbeddedDocuments("Combatant", [combatant.id]);
+                        ui.notifications.info(`${token.name} removed from combat.`);
+                    }
+                }
+            });
+        },
+    }, {
+            width: 800  // Set the desired width of the dialog
+        }).render(true);
+
 }
