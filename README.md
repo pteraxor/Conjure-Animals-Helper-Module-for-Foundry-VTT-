@@ -105,9 +105,10 @@ There are new buttons for the DM. one deletes everything, and the other opens a 
 
 ![dm buttons](https://i.imgur.com/p9D3ST6.png)
 
-The screen allows you to view the conjured, and info about them. And dismiss them individually.
+The screen allows you to view the conjured, and info about them. And dismiss them individually. As well as roll all conjured into combat
+(it will only add those not in combat. If somehow you have a conjureed group partially in combat, it will add the missing ones. However, they will get a new initiave roll)
 
-![dm conjure manage](https://i.imgur.com/qrUYmoQ.png)
+![dm conjure manage](https://i.imgur.com/e1b6JQd.png)
 
 ## Now Compatible with "Dice So Nice"
 
