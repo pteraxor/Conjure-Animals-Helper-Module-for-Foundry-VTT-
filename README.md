@@ -20,6 +20,10 @@ To use the module, the player can click the **"Conjure Animals"** button in the 
 
 ![Conjure Animals Button](assets/player_conjure_btn.PNG)
 
+alternatively, a chat message will trigger when the spell is cast normally, and a button will appear there. Both of these buttons do the same thing.
+
+![auto conjure](https://i.imgur.com/WgIITF4.png)
+
 ### Random Selection
 This opens a prompt where the player can choose to get animals randomly or select them manually. If random, it rolls a CR based on weights set in the settings and then selects a random creature with that CR.
 
