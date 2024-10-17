@@ -130,6 +130,11 @@ The GM can also specify which actors to use. By default, all animals explicitly 
 
 ![Actor Choice](assets/actor_select.PNG)
 
+### Number Overlays
+For an easier time of keeping track of who is who, numbers overlay the onjured creatures. This can be turned off in settings. But it will not reflect until a reload. 
+And turning it on will not add overlays to existing conjured.
+
+![number overlay](https://i.imgur.com/hBqanXk.png)
 
 ### Troubleshooting
 
