@@ -136,3 +136,23 @@ The GM can also specify which actors to use. By default, all animals explicitly 
 - after loading a new compendium, try refreshing if things are acting strange. It cannot aut reload, because it needs to take the time to populate everything
 - If nothing is loaded, try loading another compendium, and loading back to default one afterwards.
 
+##Button Alternatives
+
+-if you don't want the buttons to be on the actor tab, you can use macros instead. I will work on packing them with it.
+-but in the meantime, the functions that need to be accessed are as follows:
+
+Dialogue for selecting or generating random animals:
+showConjureAnimalsDialog();
+
+Dialogue for rolling multiple actions:
+showConjuredAnimalsActionManagement();
+
+Dialogue for DM conjured animals managemnet screen:
+showConjuredAnimalsManagement();
+
+DM options for deleting conjured animals:
+
+deleteAllConjuredTokens();
+removeConjuredCombatants();
+
+All of these can be made into script macros if you prefer to use that instead of the buttons. The buttons can be turned off in settings.
