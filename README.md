@@ -3,7 +3,7 @@
 ![My Module Logo](assets/animals-icon.png)
 
 ## Description
-This module automates many aspects of the **Conjure Animals** spell, allowing players to either receive a random selection of creatures or choose from a list. The GM can then generate tokens for players to control.
+This module automates many aspects of the **Conjure Animals** spell, allowing players to either receive a random selection of creatures or choose from a list. The GM can then generate tokens for players to control. Currently only works on versions before 12, but I am working on updating it.
 
 ## Features
 - Easily summon creatures
