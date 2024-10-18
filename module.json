@@ -11,10 +11,10 @@
         }
     ],
     "minimumCoreVersion": "9",
-    "compatibleCoreVersion": "12",
+    "compatibleCoreVersion": "11",
     "compatibility": {
         "minimum": "9",
-        "verified": "12"
+        "verified": "11"
     },
     "scripts": ["scripts/animal-roller.js"],
     "packs": [
